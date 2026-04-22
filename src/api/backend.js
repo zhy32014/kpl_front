@@ -2,9 +2,10 @@ import request from './request'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
+// ✅ 核心修改：AI后端地址改用环境变量，自动切换本地/线上
 const aiRequest = axios.create({
-  baseURL: 'http://localhost:8000',   // 你的 FastAPI 服务地址
-  timeout: 60000,                     // AI 生成可能较慢，设长一点
+  baseURL: process.env.VUE_APP_AI_URL || 'http://localhost:8000',   
+  timeout: 60000,                    
   headers: { 'Content-Type': 'application/json' }
 })
 // ===================== 认证模块 =====================
@@ -85,27 +86,11 @@ export const adminApi = {
   deletePost: (id) => request.delete(`/admin/posts/${id}`)
 }
 
-// export const aiApi = {
-//   tacticalAnalysis: (data) => request.post('/ai/tactical-analysis', data),
-//   coachAdvice: (data) => request.post('/ai/coach-advice', data),
-//   commentary: (data) => request.post('/ai/commentary', data),
-//   quickChat: (question, context = '') => {
-//     const safeQuestion = (question || '').trim()
-//     return request.post('/ai/tactical-analysis', {
-//       version: 'S39',
-//       blueTeam: '用户未指定',
-//       blueLineup: '用户未指定',
-//       redTeam: '用户未指定',
-//       redLineup: '用户未指定',
-//       analysisNode: safeQuestion || '请给出一段KPL通用赛事分析',
-//       nodeData: context || '这是用户的通用问答场景，请在信息不足时给出【信息缺失提示】，并基于公开常识给出可执行建议。'
-//     })
-//   }
-// }
 // ===================== AI请求拦截器（自动带Token） =====================
 aiRequest.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token')
+    // ✅ 关键修复：统一Token键名为 kpl_token（和你的登录逻辑一致）
+    const token = localStorage.getItem('kpl_token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -146,13 +131,8 @@ aiRequest.interceptors.response.use(
   }
 )
 
-// ===================== ✅ 核心：双AI接口完美合并 =====================
-/**
- * 统一AI接口集合
- * 包含：自然语言对话 + 战术分析 + 教练建议 + 赛事解说
- */
+// ===================== ✅ 统一AI接口 =====================
 export const aiApi = {
-  // 1. AI自然语言对话（你原有的quickChat）
   quickChat: (question, sessionId = 'default', temperature = 0.3) => {
     const safeQuestion = (question || '').trim()
     if (!safeQuestion) {
@@ -165,16 +145,12 @@ export const aiApi = {
     })
   },
 
-  // 2. AI战术分析（原aiAnalysisApi接口）
   tacticalAnalysis: (data) => aiRequest.post('/ai/tactical-analysis', data),
   
-  // 3. AI教练建议
   coachAdvice: (data) => aiRequest.post('/ai/coach-advice', data),
   
-  // 4. AI生成解说
   generateCommentary: (data) => aiRequest.post('/ai/commentary', data),
 
-  // 5. AI队伍分析
   analyzeTeam: (teamData, matchesHistory = []) => {
     const matchRecord = matchesHistory.map(m => 
       `${m.teamA?.name || m.teamA} ${m.scoreA ?? m.teamA?.score}:${m.scoreB ?? m.teamB?.score} ${m.teamB?.name || m.teamB} (${m.result || ''})`
@@ -216,5 +192,4 @@ ${(teamData.achievements || []).map(a => `- ${a}`).join('\n')}
   }
 }
 
-// 可选：默认导出（兼容旧代码调用）
 export default aiApi

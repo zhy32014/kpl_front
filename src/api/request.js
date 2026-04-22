@@ -4,12 +4,13 @@ import router from '@/router'
 
 // 创建 axios 实例
 const request = axios.create({
-  baseURL: 'http://localhost:8080/api',
+  // ✅ 核心修改：用环境变量，本地开发用localhost，部署用Railway公网地址
+  baseURL: process.env.VUE_APP_API_URL || 'http://localhost:8080/api',
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' }
 })
 
-// 请求拦截：自动附加 JWT token
+// 请求拦截：自动附加 JWT token（不用改，保持原样）
 request.interceptors.request.use(
   config => {
     const token = localStorage.getItem('kpl_token')
@@ -21,7 +22,7 @@ request.interceptors.request.use(
   error => Promise.reject(error)
 )
 
-// 响应拦截：统一错误处理
+// 响应拦截：统一错误处理（不用改，保持原样）
 request.interceptors.response.use(
   response => {
     const res = response.data
